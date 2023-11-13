@@ -1,0 +1,3 @@
+[submodule "deps/tenserflow"]
+	path = deps/tenserflow
+	url = git@github.com:tensorflow/tensorflow.git
