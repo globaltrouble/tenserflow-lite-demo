@@ -163,6 +163,26 @@ int main(int argc, char const * const * argv) {
         enum BertTokenizerPreprocessingStatus procStatus = bert_tokenizer_process(text, tokenId, tokenType, maskType, static_cast<size_t>(inputLen));
         assert(procStatus == BertTokenizerPreprocessingStatusOK);
         (void) procStatus;
+
+#ifndef NDEBUG
+        std::cerr << "TOKEN ID: [";
+        for (int i = 0; i < inputLen; i++) {
+            std::cerr << tokenId[i] << ',';
+        }
+        std::cerr << "]\n";
+
+        std::cerr << "TOKEN TYPE: [";
+        for (int i = 0; i < inputLen; i++) {
+            std::cerr << tokenType[i] << ',';
+        }
+        std::cerr << "]\n";
+
+        std::cerr << "MASK TYPE: [";
+        for (int i = 0; i < inputLen; i++) {
+            std::cerr << maskType[i] << ',';
+        }
+        std::cerr << "]\n";
+#endif
     }
 
     {
@@ -170,6 +190,21 @@ int main(int argc, char const * const * argv) {
 
         interpreter->Invoke();
     }
+
+    size_t const idOutpt = 0;
+    assert(outputs->size() == 1);
+    assert(interpreter->tensor(outputs->at(idOutpt))->type == kTfLiteFloat32);
+
+    float* outVal = interpreter->typed_output_tensor<float>(idOutpt);
+    size_t const outputLen = interpreter->tensor(outputs->at(idOutpt))->dims->data[1];
+    
+    std::cerr << "MODEL OUT: [";
+    for (size_t i = 0; i < outputLen; i++) {
+        std::cerr << outVal[i] << ',';
+    }
+    std::cerr << "]\n";
+
+    std::cerr << "Text was: `" << text << "` ,strlen=" << std::strlen(text) << "\n";
 
     std::cerr << "DOne!\n";
 
