@@ -49,6 +49,8 @@ int main(int argc, char const * const * argv) {
 
         ProfileIt loadmodel("Load model");
 
+        // Can be build from memory
+        //   tflite::FlatBufferModel::BuildFromBuffer(serialized_flatbuffer.c_str(), serialized_flatbuffer.size());
         model = tflite::FlatBufferModel::BuildFromFile(modelFname);
         if (model == nullptr) {
             std::cerr << "Can't load model\n";
