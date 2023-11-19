@@ -1,3 +1,6 @@
 [submodule "deps/tenserflow"]
 	path = deps/tenserflow
 	url = git@github.com:tensorflow/tensorflow.git
+[submodule "deps/bert-tokenizer-c-cpp-bindings"]
+	path = deps/bert-tokenizer-c-cpp-bindings
+	url = git@github.com:globaltrouble/bert-tokenizer-c-cpp-bindings.git

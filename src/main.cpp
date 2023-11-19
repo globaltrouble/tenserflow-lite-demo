@@ -6,14 +6,16 @@
 #include "tensorflow/lite/model.h"
 #include "tensorflow/lite/tools/gen_op_registration.h"
 
+#include "rustbert_tokenizer.h"
+
 #include <iostream>
 #include <chrono>
 #include <iomanip>
 
 struct ProfileIt {
-// #ifdef NDEBUG
-//   ProfileIt(char const * const) {};
-// #else
+#ifdef NDEBUG
+  ProfileIt(char const * const) {};
+#else
   char const * const m_name = nullptr;
   std::chrono::steady_clock::time_point m_begin;
   
@@ -23,19 +25,20 @@ struct ProfileIt {
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - m_begin);
     std::cerr << m_name << ": " << std::fixed << std::setprecision(6) << (elapsed.count() * 0.000001) << " sec \n";
   }
-// #endif
+#endif
 };
 
 int main(int argc, char const * const * argv) {
-    if (argc != 3) {
-        std::cerr << "Usage ./progname path-to-model path-to-text";
+    if (argc != 4) {
+        std::cerr << "Usage ./progname path/to/model path/to/vocab text";
         std::exit(1);
     }
 
     char const * modelFname = argv[1];
-    char const * textFname = argv[2];
+    char const * vocabFname = argv[2];
+    char const * text = argv[3];
 
-    std::cerr << "Model path: `" << modelFname << ", textFname: `" << textFname << "`\n";
+    std::cerr << "Model path: `" << modelFname << ", text: `" << text << "`\n";
 
     std::unique_ptr<tflite::FlatBufferModel> model;
     std::unique_ptr<tflite::Interpreter> interpreter;
@@ -63,6 +66,11 @@ int main(int argc, char const * const * argv) {
         // Resize input tensors, if desired.
         interpreter->AllocateTensors();
 
+        const bool lowercase = true;
+        const bool stripAccents = true;
+        enum BertTokenizerInitStatus code = bert_tokenizer_init(vocabFname, lowercase, stripAccents);
+        assert(code == BertTokenizerInitStatusOK);
+        (void) code;
 
         interpreter->SetNumThreads(8);
 
@@ -130,26 +138,22 @@ int main(int argc, char const * const * argv) {
     }
 
     {
+        ProfileIt preproc("Preprocess");
+
+        int64_t* tokenId = interpreter->typed_input_tensor<int64_t>(0);
+        int64_t* tokenType = interpreter->typed_input_tensor<int64_t>(1);
+        int64_t* maskType = interpreter->typed_input_tensor<int64_t>(2);
+        
+        const size_t inputLen = 512;
+        enum BertTokenizerPreprocessingStatus procStatus = bert_tokenizer_process(text, tokenId, tokenType, maskType, inputLen);
+        assert(procStatus == BertTokenizerPreprocessingStatusOK);
+        (void) procStatus;
+    }
+
+    {
         ProfileIt inf("Inference: ");
 
-        // Fill `input`.
-        for (int inpt : *inputs) {
-            int32_t* input = interpreter->typed_input_tensor<int32_t>(inpt);
-            int dims = interpreter->tensor(inpt)->dims->data[1];
-            for (int d = 0; d < dims; d++) {
-                input[d] = d + 1;
-            }
-        }
-        // for (uint32_t i = 0; i < 128 * 3; i++) {
-        //     input[i] = i + 1;
-        // }
-
         interpreter->Invoke();
-
-        // float* output = interpreter->typed_output_tensor<float>(0);
-
-        // (void) input;
-        // (void) output;
     }
 
     std::cerr << "DOne!\n";
