@@ -140,12 +140,25 @@ int main(int argc, char const * const * argv) {
     {
         ProfileIt preproc("Preprocess");
 
-        int64_t* tokenId = interpreter->typed_input_tensor<int64_t>(0);
-        int64_t* tokenType = interpreter->typed_input_tensor<int64_t>(1);
-        int64_t* maskType = interpreter->typed_input_tensor<int64_t>(2);
-        
-        const size_t inputLen = 512;
-        enum BertTokenizerPreprocessingStatus procStatus = bert_tokenizer_process(text, tokenId, tokenType, maskType, inputLen);
+        size_t const idInpt = 0;
+        size_t const typeInpt = 1;
+        size_t const maskInpt = 2;
+
+        assert(inputs->size() == 3);
+        assert(interpreter->tensor(inputs->at(idInpt))->type == kTfLiteInt64);
+        assert(interpreter->tensor(inputs->at(typeInpt))->type == kTfLiteInt64);
+        assert(interpreter->tensor(inputs->at(maskInpt))->type == kTfLiteInt64);
+
+        int64_t* tokenId = interpreter->typed_input_tensor<int64_t>(idInpt);
+        int64_t* tokenType = interpreter->typed_input_tensor<int64_t>(typeInpt);
+        int64_t* maskType = interpreter->typed_input_tensor<int64_t>(maskInpt);
+
+        int const inputLen = interpreter->tensor(inputs->at(idInpt))->dims->data[1];
+
+        assert(interpreter->tensor(inputs->at(typeInpt))->dims->data[1] == inputLen);
+        assert(interpreter->tensor(inputs->at(maskInpt))->dims->data[1] == inputLen);
+
+        enum BertTokenizerPreprocessingStatus procStatus = bert_tokenizer_process(text, tokenId, tokenType, maskType, static_cast<size_t>(inputLen));
         assert(procStatus == BertTokenizerPreprocessingStatusOK);
         (void) procStatus;
     }
