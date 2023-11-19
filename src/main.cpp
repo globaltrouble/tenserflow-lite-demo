@@ -40,6 +40,8 @@ int main(int argc, char const * const * argv) {
     std::unique_ptr<tflite::FlatBufferModel> model;
     std::unique_ptr<tflite::Interpreter> interpreter;
 
+    std::vector<int> const * inputs;
+    std::vector<int> const * outputs;
     {
 
         ProfileIt loadmodel("Load model");
@@ -64,6 +66,9 @@ int main(int argc, char const * const * argv) {
 
         interpreter->SetNumThreads(8);
 
+        inputs = &interpreter->inputs();
+        outputs = &interpreter->outputs();
+
         char const * trace_model = std::getenv("TFLITE_DEMO_TRACE_MODEL");
         if (trace_model != nullptr && strlen(trace_model) == 1 && *trace_model == '1') {
             std::cerr << "tensors size: " << interpreter->tensors_size() << "\n";
@@ -80,25 +85,28 @@ int main(int argc, char const * const * argv) {
                         << interpreter->tensor(i)->params.scale << ", "
                         << interpreter->tensor(i)->params.zero_point << "\n";
             }
-            int input_ = interpreter->inputs()[0];
-            int output_ = interpreter->outputs()[0];
-            std::cerr << "input[0]: " << input_ << "\n";
-            std::cerr << "output[0]: " << output_ << "\n";
-            
-            const std::vector<int> inputs = interpreter->inputs();
-            const std::vector<int> outputs = interpreter->outputs();
 
-            std::cerr << "number of inputs: " << inputs.size() << "\n";
-            std::cerr << "number of outputs: " << outputs.size() << "\n";
+            std::cerr << "number of inputs: " << inputs->size() << "\n";
+            for (uint32_t i = 0; i < inputs->size(); i++) {
+                int inpt = (*inputs)[i];
+                std::cerr << "input[" << i << "]: " << inpt << "\n";
+
+                TfLiteIntArray* inDims = interpreter->tensor(inpt)->dims;
+                std::cerr << "Input dims: " << inDims->data[1] << "\n";
+                std::cerr << "Input type: " << interpreter->tensor(inpt)->type << "\n";
+            }
+
+            std::cerr << "number of outputs: " << outputs->size() << "\n";
+            for (uint32_t i = 0; i < outputs->size(); i++) {
+                int outpt = (*outputs)[i];
+                std::cerr << "output[" << i << "]: " << outpt << "\n";
+
+                TfLiteIntArray* outDims = interpreter->tensor(outpt)->dims;
+                std::cerr << "Output dims: " << outDims->data[1] << "\n";
+                std::cerr << "Output type: " << interpreter->tensor(outpt)->type << "\n";
+            }
 
             tflite::PrintInterpreterState(interpreter.get());
-
-            TfLiteIntArray* inDims = interpreter->tensor(input_)->dims;
-            std::cerr << "Input dims: " << inDims->data[1] << "\n";
-            std::cerr << "Input type: " << interpreter->tensor(input_)->type << "\n";
-            TfLiteIntArray* outDims = interpreter->tensor(output_)->dims;
-            std::cerr << "Output dims: " << outDims->data[1] << "\n";
-            std::cerr << "Output type: " << interpreter->tensor(output_)->type << "\n";
         }
         // kTfLiteNoType = 0,
         // kTfLiteFloat32 = 1,
@@ -124,18 +132,23 @@ int main(int argc, char const * const * argv) {
     {
         ProfileIt inf("Inference: ");
 
-        int32_t* input = interpreter->typed_input_tensor<int32_t>(0);
-        // *input = 42.0;
         // Fill `input`.
-        for (uint32_t i = 0; i < 256; i++) {
-            input[i] = i + 1;
+        for (int inpt : *inputs) {
+            int32_t* input = interpreter->typed_input_tensor<int32_t>(inpt);
+            int dims = interpreter->tensor(inpt)->dims->data[1];
+            for (int d = 0; d < dims; d++) {
+                input[d] = d + 1;
+            }
         }
+        // for (uint32_t i = 0; i < 128 * 3; i++) {
+        //     input[i] = i + 1;
+        // }
 
         interpreter->Invoke();
 
         // float* output = interpreter->typed_output_tensor<float>(0);
 
-        (void) input;
+        // (void) input;
         // (void) output;
     }
 
