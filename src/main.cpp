@@ -142,9 +142,9 @@ int main(int argc, char const * const * argv) {
     {
         ProfileIt preproc("Preprocess");
 
-        size_t const idInpt = 0;
-        size_t const typeInpt = 1;
-        size_t const maskInpt = 2;
+        size_t const maskInpt = 0;
+        size_t const idInpt = 1;
+        size_t const typeInpt = 2;
 
         assert(inputs->size() == 3);
         assert(interpreter->tensor(inputs->at(idInpt))->type == kTfLiteInt64);
